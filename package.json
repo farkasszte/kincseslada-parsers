@@ -1,0 +1,11 @@
+{
+  "name": "kincseslada-parsers",
+  "version": "1.0.0",
+  "private": false,
+  "license": "GPL-3.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "djvujs-dist": "^0.5.4"
+  }
+}
