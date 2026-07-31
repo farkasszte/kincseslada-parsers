@@ -22,3 +22,6 @@ export type { DocxStyle, DocxRunProps } from './docxGpl';
 
 export { parseHtmlFile } from './htmlGpl';
 export type { HtmlBook } from './htmlGpl';
+
+export { parseFb2File } from './fb2Gpl';
+export type { Fb2Book, Fb2Section } from './fb2Gpl';
