@@ -123,13 +123,17 @@ export async function parsePdbFile(file: File): Promise<PdbBook> {
   const sections: Uint8Array[] = [];
   for (let i = 0; i < hdr.numSections; i++) sections.push(readSection(data, hdr.numSections, i));
 
-  if (hdr.identity === 'TEXtREAd') {
-    const compression = (sections[0][0] << 8) | sections[0][1];
-    const numRecords = (sections[0][8] << 8) | sections[0][9];
+  if (hdr.identity === 'TEXtREAd' || hdr.identity === 'TEXTTeal' || hdr.identity.startsWith('TEXT')) {
+    const compression = (sections[0] && sections[0].length >= 2) ? ((sections[0][0] << 8) | sections[0][1]) : 2;
+    const numRecords = (sections[0] && sections[0].length >= 10) ? ((sections[0][8] << 8) | sections[0][9]) : sections.length - 1;
     let fullText = '';
     for (let i = 1; i <= numRecords && i < sections.length; i++) {
-      const sec = compression === 2 ? decompressPalmdoc(sections[i]) : sections[i];
-      fullText += decoderCP1252.decode(sec);
+      try {
+        const sec = compression === 2 ? decompressPalmdoc(sections[i]) : sections[i];
+        fullText += decoderCP1252.decode(sec);
+      } catch {
+        fullText += decoderCP1252.decode(sections[i]);
+      }
     }
     const escaped = fullText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return { title: hdr.title, author: '', htmlContent: `<html><body><pre>${escaped}</pre></body></html>`, toc: [] };
@@ -240,6 +244,23 @@ export async function parsePdbFile(file: File): Promise<PdbBook> {
     }
     const escaped = fullText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return { title: hdr.title, author: '', htmlContent: `<html><body><pre>${escaped}</pre></body></html>`, toc: [] };
+  }
+
+  // Fallback for unknown PDB format variants: extract raw/compressed text records
+  if (sections.length > 1) {
+    let fallbackText = '';
+    for (let i = 1; i < sections.length; i++) {
+      try {
+        const sec = decompressPalmdoc(sections[i]);
+        fallbackText += decoderCP1252.decode(sec);
+      } catch {
+        fallbackText += decoderCP1252.decode(sections[i]);
+      }
+    }
+    if (fallbackText.trim()) {
+      const escaped = fallbackText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return { title: hdr.title || file.name.replace(/\.pdb$/i, ''), author: '', htmlContent: `<html><body><pre>${escaped}</pre></body></html>`, toc: [] };
+    }
   }
 
   throw new Error(`Nem támogatott PDB formátum: ${hdr.identity}. Támogatott: TEXtREAd (PalmDoc), PNRdPPrs/PNPdPPrs (eReader), zTXTGPlm (zTXT)`);

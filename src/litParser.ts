@@ -61,15 +61,20 @@ function readEncInt(data: Uint8Array, pos: number): [number, number] {
 }
 
 function readUtf8Char(data: Uint8Array, pos: number): [string, number] {
+  if (pos >= data.length) return ['', pos];
   const b0 = data[pos];
-  if (b0 < 0x80) return [String.fromCodePoint(b0), pos + 1];
-  const leading = [0, 0, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC];
-  let len = 0;
-  for (let i = 6; i >= 2; i--) { if ((b0 & (0x80 >> (6 - i))) === leading[i]) { len = i; break; } }
-  if (len < 2) throw new Error(`Invalid UTF-8 at ${pos}`);
-  let code = b0 & (0x3F >> len);
-  for (let i = 1; i < len; i++) code = (code << 6) | (data[pos + i] & 0x3f);
-  return [String.fromCodePoint(code), pos + len];
+  if (b0 < 0x80) return [String.fromCharCode(b0), pos + 1];
+  try {
+    const leading = [0, 0, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC];
+    let len = 0;
+    for (let i = 6; i >= 2; i--) { if ((b0 & (0x80 >> (6 - i))) === leading[i]) { len = i; break; } }
+    if (len >= 2 && pos + len <= data.length) {
+      let code = b0 & (0x3F >> len);
+      for (let i = 1; i < len; i++) code = (code << 6) | (data[pos + i] & 0x3f);
+      return [String.fromCodePoint(code), pos + len];
+    }
+  } catch {}
+  return [String.fromCharCode(b0), pos + 1];
 }
 
 class UnBinary {

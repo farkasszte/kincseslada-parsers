@@ -10,27 +10,31 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
   const parser = new DOMParser();
   const doc = parser.parseFromString(raw, 'text/html');
 
-  // Remove script, style, and metadata tags
-  doc.querySelectorAll('script, style, noscript, svg, head').forEach(el => el.remove());
+  // Remove script, style, boilerplate headers and metadata tags
+  doc.querySelectorAll('script, style, noscript, svg, head, header.pg-header, #pg-header, #pg-footer').forEach(el => el.remove());
 
   const titleEl = doc.querySelector('title');
-  const bookTitle = titleEl?.textContent?.trim() || fileName.replace(/\.[^/.]+$/, '');
+  let rawTitle = titleEl?.textContent?.trim() || '';
+  if (rawTitle.includes('|')) rawTitle = rawTitle.split('|')[0].trim();
+  const bookTitle = rawTitle || fileName.replace(/\.[^/.]+$/, '');
 
   const toc: { id: string; label: string; level: number; lineIndex: number }[] = [];
   let markdownLines: string[] = [`# ${bookTitle}`, ''];
   let currentLineIndex = 2;
 
   function appendBlock(text: string) {
-    const trimmed = text.trim();
+    const trimmed = text.replace(/\s+/g, ' ').trim();
     if (!trimmed) return;
     markdownLines.push(trimmed);
     markdownLines.push('');
     currentLineIndex += 2;
   }
 
+  const BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'ul', 'ol', 'div', 'section', 'article', 'main', 'header', 'footer', 'table']);
+
   function traverse(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) {
-      const txt = (node.textContent || '').trim();
+      const txt = node.textContent?.replace(/\s+/g, ' ').trim();
       if (txt) {
         appendBlock(txt);
       }
@@ -96,7 +100,17 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
       }
     }
 
-    // Recurse into child nodes for container elements (div, section, main, body, article, table, etc.)
+    // For container elements (div, section, article, etc.): if it contains no nested block tags, treat as a single paragraph block
+    const hasChildBlock = Array.from(el.children).some(child => BLOCK_TAGS.has(child.tagName.toLowerCase()));
+    if (!hasChildBlock) {
+      const blockText = (el.textContent || '').trim();
+      if (blockText) {
+        appendBlock(blockText);
+      }
+      return;
+    }
+
+    // Recurse into child nodes for container elements that have nested blocks
     Array.from(node.childNodes).forEach(child => traverse(child));
   }
 
