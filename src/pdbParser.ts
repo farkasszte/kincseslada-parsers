@@ -28,7 +28,10 @@ export interface PdbBook {
 async function inflateZlib(data: Uint8Array): Promise<Uint8Array> {
   const cs = new DecompressionStream('deflate');
   const writer = cs.writable.getWriter();
-  writer.write(data);
+  const buffer = data.buffer instanceof ArrayBuffer 
+    ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+    : new Uint8Array(data).buffer;
+  writer.write(buffer);
   writer.close();
   const reader = cs.readable.getReader();
   const chunks: Uint8Array[] = [];
