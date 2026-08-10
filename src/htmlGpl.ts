@@ -22,6 +22,17 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
   let markdownLines: string[] = [`# ${bookTitle}`, ''];
   let currentLineIndex = 2;
 
+  // Első pass: belső linkek szöveg → cél-id leképezése (pl. "CHAPTER I." → "chap01")
+  const anchorLinkMap = new Map<string, string>();
+  doc.querySelectorAll('a[href^="#"]').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    const target = href.slice(1); // #chap01 → chap01
+    const text = (a.textContent || '').replace(/\s+/g, ' ').trim();
+    if (target && text) {
+      anchorLinkMap.set(text, target);
+    }
+  });
+
   function appendBlock(text: string) {
     const trimmed = text.replace(/\s+/g, ' ').trim();
     if (!trimmed) return;
@@ -54,7 +65,7 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
       const headerText = (el.textContent || '').replace(/\s+/g, ' ').trim();
       if (headerText) {
         const prefix = '#'.repeat(level);
-        const headerId = `html-h-${toc.length}`;
+        const headerId = el.id || anchorLinkMap.get(headerText) || `html-h-${toc.length}`;
         toc.push({
           id: headerId,
           label: headerText,
