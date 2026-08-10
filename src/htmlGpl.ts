@@ -99,9 +99,16 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
     if (tag === 'ul' || tag === 'ol') {
       const items = Array.from(el.querySelectorAll(':scope > li'));
       if (items.length > 0) {
+        // A linkeket markdown-formátumban őrizzük meg (pl. [szöveg](#chap01))
+        function liToMarkdown(li: Element): string {
+          let html = li.innerHTML || '';
+          html = html.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href, text) => `[${text.trim()}](${href})`);
+          html = html.replace(/<[^>]+>/g, ' ');
+          return html.replace(/\s+/g, ' ').trim();
+        }
         const listMarkdown = items
           .map((li, idx) => {
-            const itemText = (li.textContent || '').trim();
+            const itemText = liToMarkdown(li);
             if (!itemText) return null;
             return tag === 'ol' ? `${idx + 1}. ${itemText}` : `- ${itemText}`;
           })
