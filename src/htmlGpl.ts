@@ -23,13 +23,14 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
   let currentLineIndex = 2;
 
   // Első pass: belső linkek szöveg → cél-id leképezése (pl. "CHAPTER I." → "chap01")
-  const anchorLinkMap = new Map<string, string>();
+  // A linkek szövege rövidebb lehet a fejléc-szövegnél → prefix-illesztés használata
+  const anchorLinks: { text: string; target: string }[] = [];
   doc.querySelectorAll('a[href^="#"]').forEach(a => {
     const href = a.getAttribute('href') || '';
     const target = href.slice(1); // #chap01 → chap01
     const text = (a.textContent || '').replace(/\s+/g, ' ').trim();
     if (target && text) {
-      anchorLinkMap.set(text, target);
+      anchorLinks.push({ text, target });
     }
   });
 
@@ -65,7 +66,9 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
       const headerText = (el.textContent || '').replace(/\s+/g, ' ').trim();
       if (headerText) {
         const prefix = '#'.repeat(level);
-        const headerId = el.id || anchorLinkMap.get(headerText) || `html-h-${toc.length}`;
+        // Prefix-illesztés: a link szövege rövidebb lehet (pl. "CHAPTER I." vs "CHAPTER I. Down the Rabbit-Hole")
+        const matchingLink = anchorLinks.find(l => headerText.startsWith(l.text));
+        const headerId = el.id || (matchingLink ? matchingLink.target : `html-h-${toc.length}`);
         toc.push({
           id: headerId,
           label: headerText,
