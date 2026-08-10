@@ -522,8 +522,10 @@ export async function parseLitFile(file: File): Promise<LitBook> {
 
   const manifest = parseManifest();
 
-  // Check for DRM
-  const drmKeys = ['/DRMStorage/Licenses/EUL', '/DRMStorage/DRMBookplate', '/DRMStorage/DRMSealed'];
+  // Check for DRM — a valódi DRM-jel a licenc-bejegyzés (EUL) jelenléte.
+  // A DRMSealed/DRMSource/ValidationStream placeholder-ek a DRM-mentes konvertált
+  // fájlokban is jelen vannak, így azok NEM jelentenek DRM-et.
+  const drmKeys = ['/DRMStorage/Licenses/EUL', '/DRMStorage/DRMBookplate'];
   for (const dk of drmKeys) {
     if (getEntryByName(dk)) throw new Error('DRM-védett LIT fájl nem támogatott');
   }
