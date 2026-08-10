@@ -121,28 +121,22 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
       }
     }
 
-    // Táblázatok: minden sort listaelemmé alakítunk, a linkeket megtartva
+    // Táblázatok: minden sort külön listaelemmé alakítunk, a linkeket megtartva
     if (tag === 'table') {
       const rows = Array.from(el.querySelectorAll('tr'));
       if (rows.length > 0) {
-        const tableMarkdown = rows
-          .map(row => {
-            const cells = Array.from(row.querySelectorAll('td, th'));
-            const cellTexts = cells.map(cell => {
-              let html = cell.innerHTML || '';
-              html = html.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href, text) => `[${text.trim()}](${href})`);
-              html = html.replace(/<[^>]+>/g, ' ');
-              return html.replace(/\s+/g, ' ').trim();
-            }).filter(Boolean);
-            if (cellTexts.length === 0) return null;
-            // Az első cella a link/szöveg, a többi kiegészítés → egy sorba
-            return `- ${cellTexts.join(' ')}`;
-          })
-          .filter(Boolean)
-          .join('\n');
-        if (tableMarkdown) {
-          appendBlock(tableMarkdown);
-        }
+        rows.forEach(row => {
+          const cells = Array.from(row.querySelectorAll('td, th'));
+          const cellTexts = cells.map(cell => {
+            let html = cell.innerHTML || '';
+            html = html.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href, text) => `[${text.trim()}](${href})`);
+            html = html.replace(/<[^>]+>/g, ' ');
+            return html.replace(/\s+/g, ' ').trim();
+          }).filter(Boolean);
+          if (cellTexts.length > 0) {
+            appendBlock(`- ${cellTexts.join(' ')}`);
+          }
+        });
         return;
       }
     }
