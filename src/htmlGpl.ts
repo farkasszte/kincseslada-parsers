@@ -66,9 +66,14 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
       const headerText = (el.textContent || '').replace(/\s+/g, ' ').trim();
       if (headerText) {
         const prefix = '#'.repeat(level);
-        // Prefix-illesztés: a link szövege rövidebb lehet (pl. "CHAPTER I." vs "CHAPTER I. Down the Rabbit-Hole")
-        const matchingLink = anchorLinks.find(l => headerText.startsWith(l.text));
-        const headerId = el.id || (matchingLink ? matchingLink.target : `html-h-${toc.length}`);
+        // A fejléc id-je lehet a fejlécen vagy egy beágyazott <a id="..."> elemen (pl. <h2><a id="chap01"></a>Chapter 1</h2>)
+        const nestedAnchorId = el.querySelector('a[id]')?.getAttribute('id');
+        // Prefix-illesztés: a link szövege rövidebb lehet (pl. "CHAPTER I." vs "CHAPTER I. Down the Rabbit-Hole").
+        // A leghosszabb illeszkedő linket választjuk, hogy a "Chapter 1" ne nyerjen a "Chapter 10" ellen.
+        const matchingLink = anchorLinks
+          .filter(l => headerText.startsWith(l.text))
+          .sort((a, b) => b.text.length - a.text.length)[0];
+        const headerId = el.id || nestedAnchorId || (matchingLink ? matchingLink.target : `html-h-${toc.length}`);
         toc.push({
           id: headerId,
           label: headerText,
