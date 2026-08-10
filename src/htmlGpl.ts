@@ -11,7 +11,7 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
   const doc = parser.parseFromString(raw, 'text/html');
 
   // Remove script, style, boilerplate headers and metadata tags
-  doc.querySelectorAll('script, style, noscript, svg, head, #pg-footer').forEach(el => el.remove());
+  doc.querySelectorAll('script, style, noscript, svg, head').forEach(el => el.remove());
 
   const titleEl = doc.querySelector('title');
   let rawTitle = titleEl?.textContent?.trim() || '';
@@ -125,7 +125,6 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
     if (tag === 'table') {
       const rows = Array.from(el.querySelectorAll('tr'));
       if (rows.length > 0) {
-        const listLines: string[] = [];
         rows.forEach(row => {
           const cells = Array.from(row.querySelectorAll('td, th'));
           const cellTexts = cells.map(cell => {
@@ -135,15 +134,12 @@ function parseHtmlContent(raw: string, fileName: string): HtmlBook {
             return html.replace(/\s+/g, ' ').trim();
           }).filter(Boolean);
           if (cellTexts.length > 0) {
-            listLines.push(`- ${cellTexts.join(' ')}`);
+            markdownLines.push(`- ${cellTexts.join(' ')}`);
+            currentLineIndex++;
           }
         });
-        if (listLines.length > 0) {
-          // Egy blokkba tesszük (az appendBlock üres sort tenne a sorok közé, ami megtöri a listát)
-          markdownLines.push(listLines.join('\n'));
-          markdownLines.push('');
-          currentLineIndex += listLines.length + 1;
-        }
+        markdownLines.push('');
+        currentLineIndex++;
         return;
       }
     }
