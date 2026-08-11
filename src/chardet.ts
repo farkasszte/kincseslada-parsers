@@ -62,6 +62,26 @@ function tryDecode(raw: Uint8Array, encoding: string): string | null {
   }
 }
 
+/**
+ * A windows-1250 (magyar/latin2) és a windows-1252 (nyugat-európai) a legtöbb
+ * bájtban megegyezik, így a sorrend-alapú próbálgatás mindig a windows-1252-t
+ * adná — a magyar ő/ű (0xF5/0xFB) viszont ott õ/û-ként jelenne meg (mojibake).
+ * Ha a szövegben magyar ő/ű fordul elő és nincs nyugat-európai jel (à/â/ç/ë/ï/ñ),
+ * a windows-1250 a valószínűbb.
+ */
+function prefersWindows1250(raw: Uint8Array): boolean {
+  let hasHungarian = false;
+  for (let i = 0; i < raw.length; i++) {
+    const b = raw[i];
+    if (b === 0xf5 || b === 0xfb) {
+      hasHungarian = true;
+    } else if (b === 0xe0 || b === 0xe2 || b === 0xe7 || b === 0xeb || b === 0xef || b === 0xf1) {
+      return false;
+    }
+  }
+  return hasHungarian;
+}
+
 export interface EncodingResult {
   encoding: string;
   text: string;
@@ -84,7 +104,11 @@ export function detectEncoding(raw: Uint8Array): EncodingResult {
     if (text !== null) return { encoding: resolved, text, confidence: 0.9 };
   }
 
-  for (const enc of COMMON_ENCODINGS) {
+  const candidates = prefersWindows1250(raw)
+    ? ['windows-1250', ...COMMON_ENCODINGS.filter(e => e !== 'windows-1250' && e !== 'windows-1252')]
+    : COMMON_ENCODINGS;
+
+  for (const enc of candidates) {
     const text = tryDecode(raw, enc);
     if (text !== null) {
       return { encoding: enc, text, confidence: 0.7 };
